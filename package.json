@@ -1,0 +1,14 @@
+{
+  "name": "upsampler",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "main": "make.js",
+  "scripts": {
+    "build":"node make",
+    "test": "npx serve ."
+  },
+  "keywords": [],
+  "author": "Yisheng Jiang",
+  "license": "ISC"
+}
