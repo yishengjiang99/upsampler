@@ -1,48 +1,59 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>Mocha</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <script
-      src="https://cdnjs.cloudflare.com/ajax/libs/mocha/8.3.2/mocha.min.js"
-      integrity="sha512-TfAL33PtGUxii1awTCbr3qbzQT5fYi7ItCGUfzWlnMJ4cK5BA8JNY4gJzEs+tQVbyElVbtcI2Jlaf9EFVMvyeg=="crossorigin="anonymous"></script>
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/mocha/8.3.2/mocha.min.css"
-      crossorigin="anonymous"
-      />
-    <script
-      src="https://cdnjs.cloudflare.com/ajax/libs/chai/4.3.4/chai.min.js"
-      crossorigin="anonymous"></script>
-  </head>
-  <body>
-    <div id="mocha">
-      <canvas></canvas> <button>play</button> <canvas></canvas>
-    </div>
-    <script type="module">
- import Module from './upsample.js'
-mocha.setup("bdd");
-const expect = globalThis.chai.expect;
+<head>
+  <meta charset="utf-8" />
+  <title>Mocha</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mocha/8.3.2/mocha.min.js"
+    integrity="sha512-TfAL33PtGUxii1awTCbr3qbzQT5fYi7ItCGUfzWlnMJ4cK5BA8JNY4gJzEs+tQVbyElVbtcI2Jlaf9EFVMvyeg=="
+    crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/mocha/8.3.2/mocha.min.css"
+    crossorigin="anonymous" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chai/4.3.4/chai.min.js" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="mocha">
+    <canvas></canvas> <button>play</button> <canvas></canvas>
+  </div>
+  <script type="module">
+    import {Upsampler} from './upsample.js';
+    import {chart, mkcanvas} from "../chart/chart.js";
+    import {s16ArrayBuffer2f32} from "../sf2-service/s16tof32.js"
+    mocha.setup("bdd");
+    import {load} from "../sf2-service/read.js";
+    function calcPlaybackRatio({
+      key,
+      shdr: {originalPitch, sampleRate},
+      zone,
+    }) {
+      const rootkey =
+        zone.OverrideRootKey > -1 ? zone.OverrideRootKey : originalPitch;
+      const samplePitch =
+        rootkey * 100 + zone.CoarseTune * 100 + zone.FineTune * 1;
+      const r = Math.pow(2, samplePitch / -1200) * sampleRate;
+      return r;
+    }
 
-describe('load module',()=>{
-  
-  it('just do it', ()=>{     
-   
-    const mem = new WebAssembly.Memory({initial:10,maximum:10});
-    const upsample = Module();
-  
+    const expect = globalThis.chai.expect;
+    const m = mkcanvas(); const sf2 = await load("../file.sf2"); const aa = sf2.loadProgram(0, 0).zMap[0];
+    const fls = await aa.shdr.data();
+    console.log(aa)
+    const mem = new WebAssembly.Memory({initial: 10, maximum: 10});
+    const upsampler = new Upsampler(new AudioContext(), mem);
+    const ratio = calcPlaybackRatio({zone: aa, shdr: aa.shdr, key: 1 / 4});
+    upsampler.upsample(fls, ratio * 1 / 1000);
 
-    fetch("https://dsp.grepawk.com/render/file.sf2", {
-      headers: {
-        range: "bytes=22775130-22806917",
-      },
-    }).then(res=>res.arrayBuffer()).then(ab=>{
-      console.log(upsample(ab,69, 44100))
-    })
-  });
-});
-mocha.run();
-    </script>
-  </body>
+    console.log(upsampler.process(0x8000));
+    let i = 0;
+    const ff = () => {
+      const cp = new Float32Array(4096);
+      cp.set(new Float32Array(mem.buffer, 0x8000, 4096));
+      chart(m, cp)
+      if (i += 0x1000 < fls.length / 4095)
+        requestAnimationFrame(ff);
+    }
+    ff();
+
+  </script>
+</body>
 </html>

@@ -1,19 +1,22 @@
-#include<stdio.h>
-#include<stdlib.h>
-#include<math.h>
-#include "upsample.c"
-int main(){
-  float output[4096];
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
 
-  sampler_iterator*it= init(output,69,48000,489999);
-  float sample[489999];
-  for(int i=0;i<489999;i++){
-    sample[i]=sinf((float)(2*M_PI*i*440)/48000.0f);
+#include "upsample.c"
+int main() {
+  float output[4096];
+  bzero(output, 4096 * 4);
+  float sample[49000];
+  for (int i = 0; i < 49000; i++) {
+    sample[i] = sinf((float)(2 * 3.1415926 * i * 440));
   }
-  it->sample=sample;
-  upsample_wave_table(it);
-  printf("rat %f",it->ratio);
-  for(int i=0;i<it->output_sample_block;i++){
-    printf("\n%d, %f",i,it->output[i]);
+  sampler_iterator* it = init(sample, 49000);
+
+  it->sample = sample;
+  setRatio(it, 5.0f);
+  upsample_wave_table(it, output);
+  printf("rat %f", it->ratio);
+  for (int i = 0; i < it->output_sample_block; i++) {
+    printf("\n%d, %f", i, output[i]);
   }
 }
